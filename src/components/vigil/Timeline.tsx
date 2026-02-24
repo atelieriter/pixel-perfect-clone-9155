@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { TL_EVENTS } from '@/lib/mockData';
 
 interface TimelineProps {
-  onOpenModal: (key: string) => void;
+  onOpenModal: (key: string, eventHours?: number) => void;
 }
 
 const ZOOM_LEVELS = [6, 12, 24, 48, 72, 96];
@@ -24,6 +24,8 @@ export default function Timeline({ onOpenModal }: TimelineProps) {
   const [zoomIdx, setZoomIdx] = useState(2);
   const [offset, setOffset] = useState(0);
   const [rangeLabel, setRangeLabel] = useState('');
+  const [mouseX, setMouseX] = useState(-1);
+  const [cursorTime, setCursorTime] = useState('');
   const nowRef = useRef(new Date());
   const dragRef = useRef<{ startX: number; startOff: number; dragging: boolean }>({ startX: 0, startOff: 0, dragging: false });
 
@@ -88,33 +90,37 @@ export default function Timeline({ onOpenModal }: TimelineProps) {
     TL_EVENTS.forEach(ev => {
       const px = nowPx + ev.h * pph;
       if (px < 0 || px > totalW) return;
+      const isPast = ev.h < 0;
+      const hasUrl = ev.url;
       const color = EVT_COLORS[ev.type] || 'hsl(var(--ink-muted))';
 
       const wrap = document.createElement('div');
       wrap.className = 'tl-dyn absolute top-0 bottom-0 w-7 cursor-pointer group';
-      wrap.style.cssText = `left:${px - 14}px;color:${color}`;
-      wrap.onclick = (e) => { e.stopPropagation(); onOpenModal(ev.key); };
+      wrap.style.cssText = `left:${px - 14}px;color:${color};${isPast && !hasUrl ? 'opacity:0.4;' : ''}`;
+      wrap.onclick = (e) => {
+        e.stopPropagation();
+        // If launch with URL, open it
+        if (ev.url) {
+          window.open(ev.url, '_blank', 'noopener');
+          return;
+        }
+        onOpenModal(ev.key, ev.h);
+      };
 
       // Dot
       const dot = document.createElement('div');
       dot.style.cssText = `position:absolute;left:9px;bottom:14px;width:9px;height:9px;border-radius:50%;border:1.5px solid ${color};background:hsl(var(--bg2));transition:all 0.15s`;
       wrap.appendChild(dot);
 
-      // Label
-      const lbl = document.createElement('div');
-      lbl.style.cssText = `position:absolute;left:0;right:0;bottom:28px;font-family:'Outfit',sans-serif;font-size:8px;text-align:center;color:${color};opacity:0;transition:opacity 0.15s;pointer-events:none;white-space:nowrap`;
-      lbl.textContent = ev.label;
-      wrap.appendChild(lbl);
-
-      // Tooltip
+      // Tooltip (name + subtitle only, no time)
       const tip = document.createElement('div');
-      tip.style.cssText = `position:absolute;left:50%;bottom:42px;transform:translateX(-50%);background:hsl(var(--bg2));border:1px solid ${color};border-radius:2px;padding:5px 9px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.12s;z-index:20`;
-      tip.innerHTML = `<div style="font-family:'Outfit',sans-serif;font-weight:500;font-size:9px;color:hsl(var(--ink));margin-bottom:2px">${ev.label}</div><div style="font-family:'DM Mono',monospace;font-size:8px;color:hsl(var(--ink-muted))">${fmtH(new Date(nowRef.current.getTime() + ev.h * 3600000))} UTC · ${ev.sub}</div>`;
+      tip.style.cssText = `position:absolute;left:50%;bottom:28px;transform:translateX(-50%);background:hsl(var(--bg2));border:1px solid ${color};border-radius:2px;padding:5px 9px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.12s;z-index:20`;
+      tip.innerHTML = `<div style="font-family:'Outfit',sans-serif;font-weight:500;font-size:9px;color:hsl(var(--ink));margin-bottom:2px">${ev.label}</div><div style="font-family:'DM Mono',monospace;font-size:8px;color:hsl(var(--ink-muted))">${ev.sub}</div>`;
       wrap.appendChild(tip);
 
       // Hover effects
-      wrap.onmouseenter = () => { dot.style.background = color; dot.style.transform = 'scale(1.3)'; dot.style.boxShadow = `0 0 8px ${color}`; lbl.style.opacity = '1'; tip.style.opacity = '1'; };
-      wrap.onmouseleave = () => { dot.style.background = 'hsl(var(--bg2))'; dot.style.transform = 'scale(1)'; dot.style.boxShadow = 'none'; lbl.style.opacity = '0'; tip.style.opacity = '0'; };
+      wrap.onmouseenter = () => { dot.style.background = color; dot.style.transform = 'scale(1.3)'; dot.style.boxShadow = `0 0 8px ${color}`; tip.style.opacity = '1'; };
+      wrap.onmouseleave = () => { dot.style.background = 'hsl(var(--bg2))'; dot.style.transform = 'scale(1)'; dot.style.boxShadow = 'none'; tip.style.opacity = '0'; };
 
       inner.appendChild(wrap);
     });
@@ -137,19 +143,50 @@ export default function Timeline({ onOpenModal }: TimelineProps) {
   const onMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.tl-dyn[style*="cursor"]')) return;
     dragRef.current = { startX: e.clientX, startOff: offset, dragging: true };
+    const vp = viewportRef.current;
+    if (vp) vp.style.cursor = 'grabbing';
   };
   const onMouseMove = useCallback((e: MouseEvent) => {
-    if (!dragRef.current.dragging) return;
-    const dx = e.clientX - dragRef.current.startX;
-    setOffset(dragRef.current.startOff - dx / pxPerH());
+    if (dragRef.current.dragging) {
+      const dx = e.clientX - dragRef.current.startX;
+      setOffset(dragRef.current.startOff - dx / pxPerH());
+    }
   }, [pxPerH]);
-  const onMouseUp = useCallback(() => { dragRef.current.dragging = false; }, []);
+  const onMouseUp = useCallback(() => {
+    dragRef.current.dragging = false;
+    const vp = viewportRef.current;
+    if (vp) vp.style.cursor = 'crosshair';
+  }, []);
 
   useEffect(() => {
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
     return () => { document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
   }, [onMouseMove, onMouseUp]);
+
+  // Viewport mouse move for hover zone + timestamp
+  const onViewportMouseMove = useCallback((e: React.MouseEvent) => {
+    const vp = viewportRef.current;
+    if (!vp) return;
+    const rect = vp.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    setMouseX(x);
+    // Calculate time at cursor position
+    const vpW = vp.clientWidth || 800;
+    const pph = pxPerH();
+    const hOffset = (x - vpW / 2) / pph + offset;
+    const cursorDate = new Date(nowRef.current.getTime() + hOffset * 3600000);
+    const sign = hOffset >= 0 ? '+' : '−';
+    const absH = Math.abs(hOffset);
+    const hh = Math.floor(absH);
+    const mm = Math.floor((absH - hh) * 60);
+    setCursorTime(fmtH(cursorDate) + ' UTC ' + sign + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0'));
+  }, [offset, pxPerH]);
+
+  const onViewportMouseLeave = useCallback(() => {
+    setMouseX(-1);
+    setCursorTime('');
+  }, []);
 
   // Wheel zoom
   const onWheel = useCallback((e: WheelEvent) => {
@@ -186,14 +223,50 @@ export default function Timeline({ onOpenModal }: TimelineProps) {
       {/* Viewport */}
       <div
         ref={viewportRef}
-        className="relative h-[66px] overflow-hidden cursor-grab active:cursor-grabbing"
+        className="relative h-[66px] overflow-hidden cursor-crosshair"
         onMouseDown={onMouseDown}
+        onMouseMove={onViewportMouseMove}
+        onMouseLeave={onViewportMouseLeave}
         onDoubleClick={() => setOffset(0)}
       >
         <div ref={innerRef} className="absolute top-0 left-0 h-full will-change-transform">
           {/* Rail */}
           <div className="absolute left-0 right-0 bottom-[18px] h-px bg-border" />
         </div>
+
+        {/* Hover zone (accent translucent bar) */}
+        {mouseX > 0 && (
+          <div
+            className="absolute top-0 bottom-0 pointer-events-none z-[3]"
+            style={{
+              left: mouseX - 1,
+              width: 2,
+              background: 'hsl(var(--accent))',
+              opacity: 0.35,
+            }}
+          />
+        )}
+
+        {/* Cursor time label */}
+        {mouseX > 0 && cursorTime && (
+          <div
+            className="absolute pointer-events-none z-[5] font-mono-dm whitespace-nowrap"
+            style={{
+              left: mouseX,
+              top: 2,
+              transform: 'translateX(-50%)',
+              fontSize: '8px',
+              color: 'hsl(var(--accent))',
+              background: 'hsl(var(--bg2))',
+              padding: '1px 5px',
+              borderRadius: '2px',
+              border: '1px solid hsl(var(--border))',
+            }}
+          >
+            {cursorTime}
+          </div>
+        )}
+
         {/* Edge fades */}
         <div className="absolute top-0 bottom-0 left-0 w-8 pointer-events-none z-[4]" style={{ background: 'linear-gradient(to right, hsl(var(--bg2)) 20%, transparent)' }} />
         <div className="absolute top-0 bottom-0 right-0 w-8 pointer-events-none z-[4]" style={{ background: 'linear-gradient(to left, hsl(var(--bg2)) 20%, transparent)' }} />

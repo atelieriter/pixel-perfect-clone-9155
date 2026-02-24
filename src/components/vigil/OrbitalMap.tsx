@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { LAND_POLYGONS, LAUNCH_SITES, makeSats } from '@/lib/mockData';
+import { LAUNCH_SITES, makeSats } from '@/lib/mockData';
+import { feature } from 'topojson-client';
+import type { Topology } from 'topojson-specification';
 
 interface OrbitalMapProps {
   filters: Record<string, boolean>;
   onOpenModal: (key: string) => void;
+  onToggleFilter: (key: string) => void;
 }
 
 const SL = makeSats(60, 53);
@@ -14,17 +17,61 @@ function getCssVar(name: string) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-export default function OrbitalMap({ filters, onOpenModal }: OrbitalMapProps) {
+interface ISSData {
+  latitude: number;
+  longitude: number;
+  altitude: number;
+  velocity: number;
+}
+
+export default function OrbitalMap({ filters, onOpenModal, onToggleFilter }: OrbitalMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef(0);
   const mouseRef = useRef({ x: -1, y: -1 });
-  const issRef = useRef({ lat: 48.5, lon: 2.3 });
+  const issRef = useRef<ISSData>({ latitude: 48.5, longitude: 2.3, altitude: 408.2, velocity: 27580 });
   const [pinned, setPinned] = useState(false);
   const [showCard, setShowCard] = useState(false);
+  const [issDisplay, setIssDisplay] = useState<ISSData>({ latitude: 48.5, longitude: 2.3, altitude: 408.2, velocity: 27580 });
+  const geoDataRef = useRef<any>(null);
 
   const ll2xy = useCallback((lon: number, lat: number, W: number, H: number): [number, number] => {
     return [(lon + 180) / 360 * W, (90 - lat) / 180 * H];
+  }, []);
+
+  // Fetch GeoJSON
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+        const world: Topology = await res.json();
+        geoDataRef.current = feature(world, world.objects.countries as any);
+      } catch { /* keep null, will skip land rendering */ }
+    })();
+  }, []);
+
+  // Fetch ISS position every 5s
+  useEffect(() => {
+    let cancelled = false;
+    const fetchISS = async () => {
+      try {
+        const res = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        const d: ISSData = {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          altitude: data.altitude,
+          velocity: data.velocity,
+        };
+        issRef.current = d;
+        setIssDisplay(d);
+      } catch { /* keep last position */ }
+    };
+    fetchISS();
+    const id = setInterval(fetchISS, 5000);
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
   useEffect(() => {
@@ -52,12 +99,10 @@ export default function OrbitalMap({ filters, onOpenModal }: OrbitalMapProps) {
       const border = getCssVar('--border');
       const accent = getCssVar('--accent');
       const surf2 = getCssVar('--surface2');
-      const iLat = issRef.current.lat;
-      const iLon = issRef.current.lon;
-
-      // Simulate ISS movement
-      issRef.current.lon = ((iLon + 0.05) % 360 + 360) % 360 - 180;
-      issRef.current.lat = 51.6 * Math.sin((issRef.current.lon + 180) / 360 * Math.PI * 2);
+      const landFill = getCssVar('--land-fill');
+      const landStroke = getCssVar('--land-stroke');
+      const iLat = issRef.current.latitude;
+      const iLon = issRef.current.longitude;
 
       ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = `hsl(${bg})`;
@@ -85,20 +130,38 @@ export default function OrbitalMap({ filters, onOpenModal }: OrbitalMapProps) {
       ctx.beginPath(); ctx.moveTo(0, ey); ctx.lineTo(W, ey); ctx.stroke();
       ctx.globalAlpha = 1;
 
-      // Land
-      ctx.fillStyle = `hsl(${surf2})`;
-      ctx.strokeStyle = `hsl(${border})`;
-      ctx.lineWidth = 0.5;
-      ctx.globalAlpha = 0.85;
-      LAND_POLYGONS.forEach(pts => {
-        ctx.beginPath();
-        pts.forEach(([lo, la], i) => {
-          const [x, y] = ll2xy(lo, la, W, H);
-          i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      // Land masses from GeoJSON
+      const geo = geoDataRef.current;
+      if (geo) {
+        ctx.fillStyle = `hsl(${landFill})`;
+        ctx.strokeStyle = `hsl(${landStroke})`;
+        ctx.lineWidth = 0.5;
+        ctx.globalAlpha = 0.85;
+        geo.features.forEach((feat: any) => {
+          const geom = feat.geometry;
+          const coordsList = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+          coordsList.forEach((polygon: number[][][]) => {
+            polygon.forEach((ring: number[][]) => {
+              ctx.beginPath();
+              ring.forEach(([lon, lat]: number[], i: number) => {
+                const [x, y] = ll2xy(lon, lat, W, H);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+              });
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+            });
+          });
         });
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-      });
-      ctx.globalAlpha = 1;
+        ctx.globalAlpha = 1;
+      } else {
+        // Fallback simple land
+        ctx.fillStyle = `hsl(${surf2})`;
+        ctx.strokeStyle = `hsl(${border})`;
+        ctx.lineWidth = 0.5;
+        ctx.globalAlpha = 0.85;
+        ctx.globalAlpha = 1;
+      }
 
       // GEO Belt
       if (F.geo) {
@@ -162,7 +225,7 @@ export default function OrbitalMap({ filters, onOpenModal }: OrbitalMapProps) {
 
       // ISS
       if (F.iss) {
-        const [ix, iy] = ll2xy(issRef.current.lon, issRef.current.lat, W, H);
+        const [ix, iy] = ll2xy(iLon, iLat, W, H);
         // Orbital track
         ctx.strokeStyle = `hsl(${accent})`; ctx.lineWidth = 0.5; ctx.globalAlpha = 0.1; ctx.setLineDash([4, 8]);
         ctx.beginPath();
@@ -227,10 +290,9 @@ export default function OrbitalMap({ filters, onOpenModal }: OrbitalMapProps) {
     if (!rect) return;
     mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
-    // Check proximity to ISS for card show
     if (!pinned) {
       const canvas = canvasRef.current!;
-      const [ix, iy] = ll2xy(issRef.current.lon, issRef.current.lat, canvas.width, canvas.height);
+      const [ix, iy] = ll2xy(issRef.current.longitude, issRef.current.latitude, canvas.width, canvas.height);
       const dist = Math.hypot(mouseRef.current.x - ix, mouseRef.current.y - iy);
       setShowCard(dist < 40);
     }
@@ -253,7 +315,7 @@ export default function OrbitalMap({ filters, onOpenModal }: OrbitalMapProps) {
             Show
           </span>
           {(['iss', 'starlink', 'oneweb', 'geo', 'sites'] as const).map(f => (
-            <FilterButton key={f} label={f.toUpperCase()} active={!!filters[f]} />
+            <FilterButton key={f} label={f.toUpperCase()} active={!!filters[f]} onClick={() => onToggleFilter(f)} />
           ))}
         </div>
         <span className="font-mono-dm text-[9px] text-ink-muted whitespace-nowrap">LEO · MEO · GEO</span>
@@ -287,10 +349,10 @@ export default function OrbitalMap({ filters, onOpenModal }: OrbitalMapProps) {
               </button>
             </div>
           </div>
-          <IssRow label="Latitude" value={issRef.current.lat.toFixed(1) + '°'} />
-          <IssRow label="Longitude" value={issRef.current.lon.toFixed(1) + '°'} />
-          <IssRow label="Altitude" value="408.2 km" />
-          <IssRow label="Velocity" value="27 580 km/h" />
+          <IssRow label="Latitude" value={issDisplay.latitude.toFixed(1) + '°'} />
+          <IssRow label="Longitude" value={issDisplay.longitude.toFixed(1) + '°'} />
+          <IssRow label="Altitude" value={issDisplay.altitude.toFixed(1) + ' km'} />
+          <IssRow label="Velocity" value={Math.round(issDisplay.velocity).toLocaleString() + ' km/h'} />
           <IssRow label="Inclination" value="51.6°" />
           <button
             className="flex items-center justify-center gap-1.5 mt-2.5 py-1.5 px-2 w-full bg-transparent border border-border rounded-sm font-outfit text-[9px] text-ink-sub cursor-pointer tracking-wide transition-colors hover:border-accent hover:text-accent"
@@ -305,10 +367,13 @@ export default function OrbitalMap({ filters, onOpenModal }: OrbitalMapProps) {
   );
 }
 
-function FilterButton({ label, active }: { label: string; active: boolean }) {
+function FilterButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
-    <button className={`bg-transparent border font-mono-dm text-[8px] px-1.5 py-0.5 rounded-sm cursor-pointer tracking-wide uppercase transition-colors whitespace-nowrap shrink-0
-      ${active ? 'border-accent text-accent bg-accent-dim' : 'border-border text-ink-sub hover:border-ink-sub hover:text-ink'}`}>
+    <button
+      onClick={onClick}
+      className={`bg-transparent border font-mono-dm text-[8px] px-1.5 py-0.5 rounded-sm cursor-pointer tracking-wide uppercase transition-colors whitespace-nowrap shrink-0
+      ${active ? 'border-accent text-accent bg-accent-dim' : 'border-border text-ink-sub hover:border-ink-sub hover:text-ink'}`}
+    >
       {label}
     </button>
   );

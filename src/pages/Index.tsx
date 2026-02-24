@@ -10,7 +10,8 @@ import CtaModal from '@/components/vigil/CtaModal';
 const Index = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalKey, setModalKey] = useState('');
-  const [filters] = useState({
+  const [modalEventHours, setModalEventHours] = useState<number | undefined>();
+  const [filters, setFilters] = useState({
     iss: true,
     starlink: true,
     oneweb: true,
@@ -18,13 +19,19 @@ const Index = () => {
     sites: false,
   });
 
-  const openModal = useCallback((key: string) => {
+  const openModal = useCallback((key: string, eventHours?: number) => {
     setModalKey(key);
+    setModalEventHours(eventHours);
     setModalOpen(true);
   }, []);
 
   const closeModal = useCallback(() => {
     setModalOpen(false);
+    setModalEventHours(undefined);
+  }, []);
+
+  const toggleFilter = useCallback((key: string) => {
+    setFilters(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
   }, []);
 
   return (
@@ -34,7 +41,7 @@ const Index = () => {
       <div className="flex flex-1 min-h-0" style={{ gap: '1px', background: 'hsl(var(--border))' }}>
         {/* Map column */}
         <div className="flex-1 flex flex-col min-w-0" style={{ gap: '1px', background: 'hsl(var(--border))' }}>
-          <OrbitalMap filters={filters} onOpenModal={openModal} />
+          <OrbitalMap filters={filters} onOpenModal={openModal} onToggleFilter={toggleFilter} />
           <Timeline onOpenModal={openModal} />
         </div>
 
@@ -46,7 +53,7 @@ const Index = () => {
         </div>
       </div>
 
-      <CtaModal isOpen={modalOpen} modalKey={modalKey} onClose={closeModal} />
+      <CtaModal isOpen={modalOpen} modalKey={modalKey} onClose={closeModal} eventHours={modalEventHours} />
     </div>
   );
 };
