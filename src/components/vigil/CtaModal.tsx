@@ -5,6 +5,7 @@ interface CtaModalProps {
   isOpen: boolean;
   modalKey: string;
   onClose: () => void;
+  eventHours?: number;
 }
 
 const ROLES = [
@@ -17,12 +18,28 @@ const ROLES = [
   'Other',
 ];
 
-export default function CtaModal({ isOpen, modalKey, onClose }: CtaModalProps) {
+function getIntroOverride(eventHours?: number, eventType?: string): string | null {
+  if (eventHours === undefined) return null;
+  if (eventHours < 0) {
+    const absH = Math.abs(Math.round(eventHours));
+    return `Cet événement s'est produit il y a ${absH}h. Les données d'archives ne sont pas encore disponibles dans Vigil.`;
+  }
+  if (eventHours > 0 && (eventType === 'conjunction' || eventType === 'reentry')) {
+    return 'Les prévisions de conjonctions et rentrées ne sont pas encore disponibles dans Vigil — mais si c\'est quelque chose qui vous intéresse, dites-le nous.';
+  }
+  return null;
+}
+
+export default function CtaModal({ isOpen, modalKey, onClose, eventHours }: CtaModalProps) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [message, setMessage] = useState('');
 
   const content = MODAL_CONTENT[modalKey] || { title: modalKey, intro: 'Cette fonctionnalité n\'est pas encore définie.' };
+
+  // Determine event type from key
+  const eventType = modalKey.includes('conj') ? 'conjunction' : modalKey.includes('reentry') ? 'reentry' : 'launch';
+  const introOverride = getIntroOverride(eventHours, eventType);
 
   const mailtoHref = useCallback(() => {
     const subject = encodeURIComponent('Vigil — ' + content.title);
@@ -56,7 +73,7 @@ export default function CtaModal({ isOpen, modalKey, onClose }: CtaModalProps) {
               <em className="italic text-accent">Vigil est une expérimentation développée par Atelier ITER.</em>
               {' '}Si vous pensez que cette fonctionnalité a un sens, n'hésitez pas à nous en faire part — et dites-nous ce que vous attendiez ici.
               <br /><br />
-              {content.intro}
+              {introOverride || content.intro}
             </div>
           </div>
           <button

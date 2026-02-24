@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 interface VigilHeaderProps {
   onSearch?: () => void;
@@ -6,6 +6,7 @@ interface VigilHeaderProps {
 
 export default function VigilHeader({ onSearch }: VigilHeaderProps) {
   const [utc, setUtc] = useState('');
+  const [isDark, setIsDark] = useState(() => !document.documentElement.classList.contains('light'));
 
   useEffect(() => {
     const tick = () => {
@@ -19,6 +20,21 @@ export default function VigilHeader({ onSearch }: VigilHeaderProps) {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    const html = document.documentElement;
+    if (html.classList.contains('light')) {
+      html.classList.remove('light');
+      html.classList.add('dark');
+      localStorage.setItem('vigil_theme', 'dark');
+      setIsDark(true);
+    } else {
+      html.classList.remove('dark');
+      html.classList.add('light');
+      localStorage.setItem('vigil_theme', 'light');
+      setIsDark(false);
+    }
   }, []);
 
   return (
@@ -75,6 +91,15 @@ export default function VigilHeader({ onSearch }: VigilHeaderProps) {
             FR
           </button>
         </div>
+
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className="bg-transparent border border-border text-ink-sub font-mono-dm text-[13px] w-[28px] h-[28px] flex items-center justify-center rounded-sm cursor-pointer transition-colors hover:border-accent hover:text-accent"
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          ◐
+        </button>
       </div>
     </header>
   );

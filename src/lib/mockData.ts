@@ -9,6 +9,7 @@ export interface LaunchEvent {
   time: string;
   status: 'go' | 'tbd' | 'hold';
   modalKey: string;
+  url?: string; // webcast/youtube URL if available
 }
 
 export interface TimelineEvent {
@@ -17,6 +18,7 @@ export interface TimelineEvent {
   sub: string;
   type: 'launch' | 'conjunction' | 'reentry';
   key: string;
+  url?: string; // real link if available
 }
 
 export interface ModalContent {
@@ -62,17 +64,10 @@ export const MODAL_CONTENT: Record<string, ModalContent> = {
   'flagged': { title: 'Flagged Events — Today', intro: 'Conjunctions Pc > seuil, manœuvres d\'évitement, objets en rentrée.' },
   'today-activity': { title: 'Today\'s Orbital Activity', intro: 'Feed des événements notables : conjunctions, manœuvres, anomalies.' },
   'search': { title: 'Search', intro: 'Recherche par satellite, constellation, NORAD ID. Filtres avancés.' },
+  'starlink-constellation': { title: 'Starlink Constellation Detail', intro: 'Détail de la constellation Starlink : nombre de satellites, plans orbitaux, couverture.' },
+  'oneweb-constellation': { title: 'OneWeb Constellation Detail', intro: 'Détail de la constellation OneWeb : nombre de satellites, inclinaison, couverture.' },
+  'live-coverage': { title: 'Live Coverage', intro: 'Lien vers la retransmission du lancement.' },
 };
-
-// Land mass polygons (simplified)
-export const LAND_POLYGONS = [
-  [[-125,49],[-95,49],[-80,45],[-65,44],[-60,47],[-60,25],[-80,10],[-90,16],[-105,20],[-115,30],[-125,40]],
-  [[-80,12],[-50,5],[-35,-5],[-35,-25],[-55,-35],[-68,-55],[-75,-50],[-80,-35],[-70,-10],[-75,5]],
-  [[-10,36],[15,37],[30,36],[40,42],[38,52],[18,58],[0,51],[-5,44],[-10,38]],
-  [[-18,16],[52,16],[52,-30],[18,-35],[0,5],[-18,16]],
-  [[26,36],[55,22],[105,10],[120,20],[145,42],[140,55],[80,60],[40,38],[26,36]],
-  [[114,-22],[154,-22],[154,-38],[136,-38],[114,-28]],
-];
 
 export const LAUNCH_SITES: [number, number][] = [
   [-80.6, 28.5],   // KSC
