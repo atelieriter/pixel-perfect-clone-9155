@@ -1,7 +1,58 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { LAUNCH_SITES, makeSats } from '@/lib/mockData';
-import { feature } from 'topojson-client';
-import type { Topology } from 'topojson-specification';
+
+// Minimal inline topojson decoder (avoids npm dep that breaks React)
+function topoFeature(topo: any, obj: any): any {
+  const arcs = topo.arcs;
+  const transform = topo.transform;
+
+  function decodeArc(arcIdx: number): number[][] {
+    const arc = arcs[arcIdx < 0 ? ~arcIdx : arcIdx];
+    const coords: number[][] = [];
+    let x = 0, y = 0;
+    for (const pt of arc) {
+      x += pt[0]; y += pt[1];
+      if (transform) {
+        coords.push([x * transform.scale[0] + transform.translate[0], y * transform.scale[1] + transform.translate[1]]);
+      } else {
+        coords.push([x, y]);
+      }
+    }
+    if (arcIdx < 0) coords.reverse();
+    return coords;
+  }
+
+  function decodeRing(indices: number[]): number[][] {
+    let ring: number[][] = [];
+    for (const idx of indices) {
+      const decoded = decodeArc(idx);
+      ring = ring.concat(decoded);
+    }
+    return ring;
+  }
+
+  function decodeGeometry(geom: any): any {
+    if (geom.type === 'Polygon') {
+      return { type: 'Polygon', coordinates: geom.arcs.map(decodeRing) };
+    }
+    if (geom.type === 'MultiPolygon') {
+      return { type: 'MultiPolygon', coordinates: geom.arcs.map((poly: any) => poly.map(decodeRing)) };
+    }
+    return geom;
+  }
+
+  if (obj.type === 'GeometryCollection') {
+    return {
+      type: 'FeatureCollection',
+      features: obj.geometries.map((g: any) => ({
+        type: 'Feature',
+        geometry: decodeGeometry(g),
+        properties: g.properties || {},
+      })),
+    };
+  }
+  return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: decodeGeometry(obj), properties: obj.properties || {} }] };
+}
 
 interface OrbitalMapProps {
   filters: Record<string, boolean>;
@@ -44,9 +95,11 @@ export default function OrbitalMap({ filters, onOpenModal, onToggleFilter }: Orb
     (async () => {
       try {
         const res = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
-        const world: Topology = await res.json();
-        geoDataRef.current = feature(world, world.objects.countries as any);
-      } catch { /* keep null, will skip land rendering */ }
+        const world = await res.json();
+        if (world?.objects?.countries) {
+          geoDataRef.current = topoFeature(world, world.objects.countries);
+        }
+      } catch (e) { console.error('GeoJSON fetch failed:', e); }
     })();
   }, []);
 
