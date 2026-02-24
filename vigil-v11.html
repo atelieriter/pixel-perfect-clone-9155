@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIGIL</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;1,400&family=Outfit:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[data-theme="dark"]{--bg:#0A0C10;--bg2:#10131A;--surface:#171B24;--surface2:#1E2330;--border:#272D3D;--ink:#E8ECF5;--ink-sub:#7A8099;--ink-muted:#4A5268;--accent:#2979FF;--adim:rgba(41,121,255,0.09)}
+[data-theme="light"]{--bg:#F4F0E8;--bg2:#EDE8DE;--surface:#E4DDD0;--surface2:#D8D0C0;--border:#C4BAA8;--ink:#18181A;--ink-sub:#605A50;--ink-muted:#A09888;--accent:#E8284A;--adim:rgba(232,40,74,0.08)}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'Outfit',sans-serif;font-size:14px;line-height:1.5;transition:background .3s,color .3s}
+
+/* HEADER */
+header{display:flex;align-items:center;height:50px;padding:0 16px;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:100;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.logo svg{width:20px;height:20px;flex-shrink:0}
+.logo-name{font-family:'EB Garamond',serif;font-style:italic;font-size:19px;color:var(--accent);line-height:1}
+.h-sep{width:1px;height:28px;background:var(--border);margin:0 14px;flex-shrink:0}
+.tagline{font-family:'Outfit',sans-serif;font-weight:300;font-size:10px;color:var(--ink-muted);letter-spacing:.02em;padding-right:16px;border-right:1px solid var(--border);flex-shrink:0;white-space:nowrap}
+.search-wrap{flex:1;padding:0 16px;border-right:1px solid var(--border);display:flex;align-items:center;min-width:0}
+.search-inner{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:4px 10px;width:100%;max-width:320px;transition:border-color .15s}
+.search-inner:focus-within{border-color:var(--accent)}
+.si{font-size:12px;color:var(--ink-muted);flex-shrink:0}
+.search-inner input{background:none;border:none;outline:none;font-family:'Outfit',sans-serif;font-weight:300;font-size:11px;color:var(--ink);width:100%}
+.search-inner input::placeholder{color:var(--ink-muted)}
+.hright{display:flex;align-items:center;gap:9px;flex-shrink:0;padding-left:14px}
+.live{display:flex;align-items:center;gap:4px;background:var(--adim);border:1px solid var(--accent);border-radius:1px;padding:2px 7px}
+.ldot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.ltext{font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:.1em}
+.utc{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-sub)}
+.cb{background:none;border:1px solid var(--border);color:var(--ink-sub);font-family:'DM Mono',monospace;font-size:9px;padding:3px 7px;border-radius:1px;cursor:pointer;letter-spacing:.05em;transition:all .15s}
+.cb:hover,.cb.on{border-color:var(--accent);color:var(--accent)}
+
+/* LAYOUT */
+.body-layout{display:flex;height:calc(100vh - 50px);gap:1px;background:var(--border)}
+.map-col{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--border);gap:1px}
+.map-panel{flex:1;display:flex;flex-direction:column;background:var(--bg2);overflow:hidden;min-height:0}
+.map-head{display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:38px;border-bottom:1px solid var(--border);flex-shrink:0;gap:10px}
+.ph{font-family:'Outfit',sans-serif;font-weight:500;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-sub)}
+.pi{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-muted);white-space:nowrap}
+.map-filters{display:flex;align-items:center;gap:5px;flex:1;overflow-x:auto}
+.flbl{font-family:'Outfit',sans-serif;font-weight:300;font-size:8px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
+.fb{background:none;border:1px solid var(--border);color:var(--ink-sub);font-family:'DM Mono',monospace;font-size:8px;padding:2px 6px;border-radius:1px;cursor:pointer;letter-spacing:.05em;text-transform:uppercase;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.fb.on{border-color:var(--accent);color:var(--accent);background:var(--adim)}
+.fb:hover:not(.on){border-color:var(--ink-sub);color:var(--ink)}
+.map-canvas-wrap{flex:1;position:relative;overflow:hidden;min-height:0}
+#map{display:block;width:100%;height:100%;cursor:crosshair}
+.ch-label{position:absolute;pointer-events:none;font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);background:var(--bg2);padding:2px 5px;border:1px solid var(--border);border-radius:1px;white-space:nowrap;opacity:0;transition:opacity .1s;z-index:5}
+
+/* ISS CARD */
+.iss-card{position:absolute;bottom:14px;left:14px;background:var(--bg2);border:1px solid var(--border);border-radius:2px;padding:10px 12px;min-width:188px;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s,border-color .15s;z-index:10}
+.iss-card.show{opacity:1;transform:translateY(0);pointer-events:all}
+.iss-card.pinned{opacity:1;transform:translateY(0);pointer-events:all;border-color:var(--accent)}
+.ic-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;gap:8px}
+.ic-title{font-family:'Outfit',sans-serif;font-weight:500;font-size:10px;color:var(--accent)}
+.ic-controls{display:flex;align-items:center;gap:5px}
+.ic-badge{font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-muted);border:1px solid var(--border);padding:1px 4px;border-radius:1px;white-space:nowrap}
+.ic-pin{background:none;border:1px solid var(--border);border-radius:1px;width:18px;height:18px;cursor:pointer;color:var(--ink-muted);font-size:9px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.ic-pin:hover,.ic-pin.on{border-color:var(--accent);color:var(--accent);background:var(--adim)}
+.ic-row{display:flex;justify-content:space-between;gap:12px;margin-bottom:2px}
+.ic-k{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-muted)}
+.ic-v{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink)}
+.ic-btn{display:flex;align-items:center;justify-content:center;gap:5px;margin-top:9px;padding:5px 8px;width:100%;background:none;border:1px solid var(--border);border-radius:1px;font-family:'Outfit',sans-serif;font-weight:400;font-size:9px;color:var(--ink-sub);cursor:pointer;letter-spacing:.04em;transition:border-color .15s,color .15s}
+.ic-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ic-btn-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);flex-shrink:0;animation:blink 2s infinite}
+
+/* ══ TIMELINE v11 ══ */
+.timeline-panel{
+  height:96px;flex-shrink:0;background:var(--bg2);
+  position:relative;overflow:hidden;
+  border-top:1px solid var(--border);
+  user-select:none;
+}
+.tl-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 14px 0;height:30px;
+}
+.tl-label{font-family:'Outfit',sans-serif;font-weight:500;font-size:8px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-muted)}
+.tl-center{display:flex;align-items:center;gap:6px}
+.tl-range{font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-sub);min-width:120px;text-align:center}
+.tl-zoom-btns{display:flex;gap:3px}
+.tl-zoom-btn{background:none;border:1px solid var(--border);color:var(--ink-muted);font-family:'DM Mono',monospace;font-size:10px;width:18px;height:18px;border-radius:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.tl-zoom-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tl-zoom-lbl{font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-muted);padding:0 5px;border:1px solid var(--border);border-radius:1px;height:18px;display:flex;align-items:center}
+.tl-nav{display:flex;gap:3px}
+.tl-nav-btn{background:none;border:1px solid var(--border);border-radius:1px;width:18px;height:18px;cursor:pointer;color:var(--ink-muted);font-size:10px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.tl-nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tl-reset-btn{background:none;border:1px solid var(--border);color:var(--ink-muted);font-family:'DM Mono',monospace;font-size:8px;padding:0 6px;height:18px;border-radius:1px;cursor:pointer;transition:all .15s}
+.tl-reset-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Viewport */
+.tl-viewport{
+  position:relative;
+  height:66px;
+  overflow:hidden;
+  cursor:crosshair;
+}
+.tl-viewport.panning{cursor:grabbing}
+
+/* Inner canvas */
+.tl-inner{
+  position:absolute;top:0;left:0;height:100%;
+  will-change:transform;
+}
+
+/* Rail */
+.tl-rail{
+  position:absolute;left:0;right:0;
+  bottom:20px;height:1px;
+  background:var(--border);
+}
+
+/* NOW marker */
+.tl-now{
+  position:absolute;bottom:16px;
+  width:2px;height:22px;
+  background:var(--accent);border-radius:1px;
+  transform:translateX(-1px);z-index:3;
+}
+.tl-now::after{
+  content:'NOW';
+  position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+  font-family:'DM Mono',monospace;font-size:7px;color:var(--accent);
+  white-space:nowrap;letter-spacing:.08em;
+}
+
+/* Ticks */
+.tl-tick{position:absolute;bottom:20px;width:1px;background:var(--border)}
+.tl-tick-lbl{
+  position:absolute;bottom:3px;
+  font-family:'DM Mono',monospace;font-size:7px;color:var(--ink-muted);
+  transform:translateX(-50%);white-space:nowrap;
+}
+
+/* Event */
+.tl-evt{
+  position:absolute;bottom:0;width:32px;height:100%;
+  cursor:pointer;z-index:2;
+}
+.tl-evt::before{
+  content:'';position:absolute;inset:0;
+  background:var(--accent);opacity:0;
+  transition:opacity .12s;border-radius:1px;pointer-events:none;
+}
+.tl-evt:hover::before{opacity:.06}
+.tl-evt-dot{
+  position:absolute;left:11px;bottom:15px;
+  width:10px;height:10px;border-radius:50%;
+  border:1.5px solid currentColor;background:var(--bg2);
+  transition:background .12s,transform .12s,box-shadow .12s;z-index:3;
+}
+.tl-evt:hover .tl-evt-dot{background:currentColor;transform:scale(1.25);box-shadow:0 0 7px currentColor}
+.tl-evt-lbl{
+  position:absolute;bottom:30px;left:0;right:0;
+  font-family:'Outfit',sans-serif;font-weight:400;font-size:8px;
+  color:inherit;text-align:center;white-space:nowrap;
+  opacity:0;transition:opacity .12s;pointer-events:none;
+  transform:translateX(-30%);
+}
+.tl-evt:hover .tl-evt-lbl{opacity:1}
+.tl-evt-tip{
+  position:absolute;bottom:46px;left:50%;transform:translateX(-50%);
+  background:var(--bg2);border:1px solid var(--accent);border-radius:2px;
+  padding:5px 9px;white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .1s;z-index:20;
+}
+.tl-evt:hover .tl-evt-tip{opacity:1}
+.tl-evt-tip-name{font-family:'Outfit',sans-serif;font-weight:500;font-size:9px;color:var(--ink);margin-bottom:2px}
+.tl-evt-tip-sub{font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-muted)}
+
+/* Hover zone (in viewport, not inner) */
+.tl-hover-zone{
+  position:absolute;top:0;bottom:0;
+  background:var(--accent);opacity:0;
+  pointer-events:none;border-radius:1px;
+  transition:opacity .1s;
+}
+.tl-hover-zone.visible{opacity:.06}
+
+/* Cursor line */
+.tl-cursor-line{
+  position:absolute;top:0;bottom:0;width:1px;
+  background:var(--accent);opacity:0;
+  pointer-events:none;z-index:5;transition:opacity .1s;
+}
+.tl-cursor-line.visible{opacity:.35}
+
+/* Cursor time label */
+.tl-cursor-lbl{
+  position:absolute;bottom:44px;
+  font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-sub);
+  background:var(--bg2);border:1px solid var(--border);
+  padding:2px 6px;border-radius:1px;
+  pointer-events:none;white-space:nowrap;
+  opacity:0;transition:opacity .1s;z-index:10;
+  transform:translateX(-50%);
+}
+.tl-cursor-lbl.visible{opacity:1}
+
+/* Edge fades */
+.tl-fade-l,.tl-fade-r{
+  position:absolute;top:0;bottom:0;width:36px;
+  pointer-events:none;z-index:4;
+}
+.tl-fade-l{left:0;background:linear-gradient(to right,var(--bg2) 20%,transparent)}
+.tl-fade-r{right:0;background:linear-gradient(to left,var(--bg2) 20%,transparent)}
+
+/* SIDE */
+.side{width:350px;flex-shrink:0;overflow-y:auto;background:var(--bg2);display:flex;flex-direction:column;gap:1px}
+::-webkit-scrollbar{width:2px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border)}
+.panel{background:var(--bg2);flex-shrink:0}
+.phead{display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:38px;border-bottom:1px solid var(--border)}
+.lrow{display:grid;grid-template-columns:2px 1fr auto;gap:0 11px;align-items:start;padding:9px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;text-decoration:none;color:inherit}
+.lrow:hover{background:var(--surface)}
+.lrow:last-child{border-bottom:none}
+.lbar{border-radius:1px;align-self:stretch;min-height:32px}
+.lbar.go{background:var(--accent)}.lbar.tbd{background:var(--ink-muted)}.lbar.hold{background:var(--ink-muted);opacity:.4}
+.lname{font-family:'Outfit',sans-serif;font-weight:500;font-size:11px;color:var(--ink);margin-bottom:1px}
+.lsub{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-sub);margin-bottom:3px}
+.lbadge{display:inline-block;padding:1px 5px;border-radius:1px;font-family:'Outfit',sans-serif;font-weight:500;font-size:8px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--accent);color:var(--accent)}
+.lbadge.tbd{border-color:var(--ink-muted);color:var(--ink-muted)}
+.lbadge.hold{border-color:var(--ink-muted);color:var(--ink-muted);opacity:.5}
+.ldate{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink);text-align:right}
+.ltime{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-sub);text-align:right;margin-top:1px}
+.track-btn{display:flex;align-items:center;justify-content:center;gap:5px;margin:8px 14px 10px;padding:6px;border:1px solid var(--border);border-radius:1px;font-family:'Outfit',sans-serif;font-weight:400;font-size:9px;color:var(--ink-muted);cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:border-color .15s,color .15s;background:none;width:calc(100% - 28px)}
+.track-btn:hover{border-color:var(--accent);color:var(--accent)}
+.solar-body{padding:13px 14px;display:flex;flex-direction:column;gap:10px}
+.kp-row{display:flex;align-items:baseline;gap:9px}
+.kpn{font-family:'DM Mono',monospace;font-size:36px;line-height:1;color:var(--ink);cursor:pointer;transition:opacity .15s}
+.kpn:hover{opacity:.7}
+.kpi{display:flex;flex-direction:column;gap:2px}
+.kpu{font-family:'Outfit',sans-serif;font-weight:300;font-size:9px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.09em}
+.kps{font-family:'Outfit',sans-serif;font-weight:500;font-size:11px;color:var(--accent)}
+.gauge-wrap{display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.gauge-wrap:hover .gtrack{opacity:.8}
+.gauge-top{display:flex;justify-content:space-between;align-items:center}
+.gtitle{font-family:'Outfit',sans-serif;font-weight:500;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-sub)}
+.gverdict{font-family:'Outfit',sans-serif;font-weight:500;font-size:10px;color:var(--accent)}
+.gtrack{position:relative;height:5px;border-radius:3px;overflow:hidden;background:linear-gradient(to right,var(--accent) 0%,rgba(120,140,180,.35) 55%,rgba(200,55,55,.85) 100%);transition:opacity .15s}
+[data-theme="light"] .gtrack{background:linear-gradient(to right,var(--accent) 0%,rgba(140,110,90,.35) 55%,rgba(180,30,30,.85) 100%)}
+.gcursor{position:absolute;top:-1px;width:3px;height:7px;background:var(--ink);border-radius:1px;left:35%}
+.gscale{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-muted)}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.scell{background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:7px 9px;cursor:pointer;transition:border-color .15s}
+.scell:hover{border-color:var(--accent)}
+.skey{font-family:'Outfit',sans-serif;font-weight:300;font-size:8px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:2px}
+.sval{font-family:'DM Mono',monospace;font-size:12px;color:var(--ink)}
+.snote{border:1px solid var(--border);border-left:2px solid var(--accent);background:var(--adim);border-radius:2px;padding:7px 10px;font-family:'Outfit',sans-serif;font-weight:300;font-size:10px;color:var(--ink-sub);line-height:1.6;cursor:pointer;transition:opacity .15s}
+.snote:hover{opacity:.75}
+.orb-body{padding:13px 14px;display:flex;flex-direction:column;gap:11px}
+.orb-counts{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.orb-count{background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:8px 10px;cursor:pointer;transition:border-color .15s}
+.orb-count:hover{border-color:var(--accent)}
+.orb-num{font-family:'DM Mono',monospace;font-size:17px;color:var(--ink);line-height:1;margin-bottom:2px}
+.orb-num span{font-size:11px;color:var(--ink-sub)}
+.orb-key{font-family:'Outfit',sans-serif;font-weight:300;font-size:8.5px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.08em}
+.orb-alert{border:1px solid var(--border);border-left:2px solid var(--accent);background:var(--adim);border-radius:2px;padding:8px 10px;cursor:pointer;transition:opacity .15s}
+.orb-alert:hover{opacity:.75}
+.oat{font-family:'Outfit',sans-serif;font-weight:500;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin-bottom:5px}
+.oar{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+.oar:last-child{margin-bottom:0}
+.oar-l{font-family:'Outfit',sans-serif;font-weight:300;font-size:10px;color:var(--ink-sub)}
+.oar-v{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink)}
+.orb-bd{display:flex;flex-direction:column;gap:6px}
+.ob-title{font-family:'Outfit',sans-serif;font-weight:500;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-sub)}
+.ob-row{display:flex;align-items:center;gap:8px;cursor:pointer;padding:2px 0;transition:opacity .12px}
+.ob-row:hover{opacity:.72}
+.ob-lbl{font-family:'Outfit',sans-serif;font-weight:300;font-size:10px;color:var(--ink-sub);width:66px;flex-shrink:0}
+.ob-track{flex:1;height:3px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.ob-fill{height:100%;background:var(--accent);border-radius:2px}
+.ob-ct{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-muted);width:40px;text-align:right;flex-shrink:0}
+.orb-note{font-family:'Outfit',sans-serif;font-weight:300;font-size:9px;color:var(--ink-muted);line-height:1.5;font-style:italic;padding-bottom:2px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,12,16,.8);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;backdrop-filter:blur(3px)}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:3px;width:100%;max-width:460px;margin:20px;transform:translateY(10px);transition:transform .2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-top{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.modal-titles{flex:1}
+.modal-eyebrow{font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-muted);margin-bottom:4px}
+.modal-title{font-family:'Outfit',sans-serif;font-weight:500;font-size:15px;color:var(--ink);margin-bottom:5px}
+.modal-intro{font-family:'Outfit',sans-serif;font-weight:300;font-size:11px;color:var(--ink-sub);line-height:1.6}
+.modal-intro em{font-style:italic;color:var(--accent)}
+.modal-close{background:none;border:none;color:var(--ink-muted);font-size:20px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;transition:color .15s}
+.modal-close:hover{color:var(--ink)}
+.modal-body{padding:16px 20px}
+.field{margin-bottom:11px}
+.field label{display:block;font-family:'Outfit',sans-serif;font-weight:500;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-sub);margin-bottom:4px}
+.field input,.field textarea,.field select{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:7px 10px;font-family:'Outfit',sans-serif;font-weight:300;font-size:12px;color:var(--ink);outline:none;transition:border-color .15s;-webkit-appearance:none}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:65px;line-height:1.5}
+.field select option{background:var(--bg2);color:var(--ink)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-foot{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-top:1px solid var(--border);gap:12px}
+.modal-foot-note{font-family:'Outfit',sans-serif;font-weight:300;font-size:9px;color:var(--ink-muted);line-height:1.5;flex:1;font-style:italic}
+.btn-send{background:var(--accent);color:#fff;border:none;border-radius:2px;padding:7px 16px;font-family:'Outfit',sans-serif;font-weight:500;font-size:11px;letter-spacing:.04em;cursor:pointer;flex-shrink:0;transition:opacity .15s;text-decoration:none;display:inline-block}
+.btn-send:hover{opacity:.85}
+
+@media(max-width:800px){
+  html,body{height:auto;overflow:auto}
+  .body-layout{flex-direction:column;height:auto}
+  .map-col{flex:none}
+  .map-panel{height:56vw;min-height:220px}
+  .side{width:100%;overflow-y:visible}
+  .panel{border-top:1px solid var(--border)}
+  .tagline,.h-sep{display:none}
+  .search-wrap{border-right:none;padding-right:0}
+  .search-inner{max-width:100%}
+}
+@media(max-width:480px){.utc{display:none}#bFR{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 20 20" fill="none">
+      <line x1="10" y1="1.5" x2="10" y2="10" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round"/>
+      <line x1="3.2" y1="14.25" x2="10" y2="10" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round"/>
+      <line x1="16.8" y1="14.25" x2="10" y2="10" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round"/>
+      <polygon points="10,1.5 16.8,5.75 16.8,14.25 10,18.5 3.2,14.25 3.2,5.75" fill="none" stroke="var(--ink)" stroke-width="1.4"/>
+    </svg>
+    <span class="logo-name">Vigil</span>
+  </div>
+  <div class="h-sep"></div>
+  <span class="tagline">The real-time pulse of orbital space</span>
+  <div class="search-wrap">
+    <div class="search-inner">
+      <span class="si">⌕</span>
+      <input type="text" placeholder="Search satellite, constellation, NORAD ID…"/>
+    </div>
+  </div>
+  <div class="hright">
+    <div class="live"><div class="ldot"></div><span class="ltext">LIVE</span></div>
+    <span class="utc" id="clk">00:00:00 UTC</span>
+    <div style="display:flex;gap:4px">
+      <button class="cb on" id="bEN" onclick="setLang('en')">EN</button>
+      <button class="cb" id="bFR" onclick="setLang('fr')">FR</button>
+    </div>
+    <button class="cb" onclick="toggleTheme()">◐</button>
+  </div>
+</header>
+
+<div class="body-layout">
+  <div class="map-col">
+
+    <!-- MAP -->
+    <div class="map-panel">
+      <div class="map-head">
+        <span class="ph">Orbital Map</span>
+        <div class="map-filters">
+          <span class="flbl">Show</span>
+          <button class="fb on" data-f="iss">ISS</button>
+          <button class="fb on" data-f="starlink">Starlink</button>
+          <button class="fb on" data-f="oneweb">OneWeb</button>
+          <button class="fb" data-f="geo">GEO Belt</button>
+          <button class="fb" data-f="sites">Launch Sites</button>
+        </div>
+        <span class="pi">LEO · MEO · GEO</span>
+      </div>
+      <div class="map-canvas-wrap">
+        <canvas id="map"></canvas>
+        <div class="ch-label" id="chLabel"></div>
+        <div class="iss-card" id="issCard">
+          <div class="ic-head">
+            <span class="ic-title">ISS — NORAD 25544</span>
+            <div class="ic-controls">
+              <span class="ic-badge">LEO</span>
+              <button class="ic-pin" id="pinBtn" title="Pin card" onclick="togglePin()">⊙</button>
+            </div>
+          </div>
+          <div class="ic-row"><span class="ic-k">Latitude</span><span class="ic-v" id="cLat">—</span></div>
+          <div class="ic-row"><span class="ic-k">Longitude</span><span class="ic-v" id="cLon">—</span></div>
+          <div class="ic-row"><span class="ic-k">Altitude</span><span class="ic-v">408.2 km</span></div>
+          <div class="ic-row"><span class="ic-k">Velocity</span><span class="ic-v">27 580 km/h</span></div>
+          <div class="ic-row"><span class="ic-k">Inclination</span><span class="ic-v">51.6°</span></div>
+          <button class="ic-btn" onclick="openModal('iss-events')">
+            <span class="ic-btn-dot"></span>
+            Related events
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIMELINE v11 -->
+    <div class="timeline-panel" id="tlPanel">
+      <div class="tl-header">
+        <span class="tl-label">Timeline</span>
+        <div class="tl-center">
+          <div class="tl-nav">
+            <button class="tl-nav-btn" id="tlBack">‹</button>
+            <button class="tl-nav-btn" id="tlFwd">›</button>
+          </div>
+          <span class="tl-range" id="tlRange">—</span>
+          <div class="tl-zoom-btns">
+            <button class="tl-zoom-btn" id="tlZoomOut">−</button>
+            <span class="tl-zoom-lbl" id="tlZoomLbl">24h</span>
+            <button class="tl-zoom-btn" id="tlZoomIn">+</button>
+          </div>
+        </div>
+        <button class="tl-reset-btn" id="tlReset">NOW</button>
+      </div>
+      <div class="tl-viewport" id="tlViewport">
+        <div class="tl-inner" id="tlInner">
+          <div class="tl-rail"></div>
+        </div>
+        <div class="tl-hover-zone" id="tlHoverZone"></div>
+        <div class="tl-cursor-line" id="tlCursorLine"></div>
+        <div class="tl-cursor-lbl" id="tlCursorLbl"></div>
+        <div class="tl-fade-l"></div>
+        <div class="tl-fade-r"></div>
+      </div>
+    </div>
+
+  </div><!-- /map-col -->
+
+  <!-- SIDE -->
+  <div class="side">
+    <div class="panel">
+      <div class="phead"><span class="ph">Upcoming Launches</span><span class="pi">02</span></div>
+      <a class="lrow" href="https://spacex.com/launches" target="_blank">
+        <div class="lbar go"></div>
+        <div><div class="lname">Falcon 9 · Starlink 6-74</div><div class="lsub">SpaceX · LC-39A · Kennedy SC</div><span class="lbadge">GO</span></div>
+        <div><div class="ldate">26 FEB</div><div class="ltime">02:15 UTC</div></div>
+      </a>
+      <a class="lrow" href="https://arianespace.com" target="_blank">
+        <div class="lbar go"></div>
+        <div><div class="lname">Ariane 6 · SES-26</div><div class="lsub">ArianeGroup · ELA-4 · Kourou</div><span class="lbadge">GO</span></div>
+        <div><div class="ldate">02 MAR</div><div class="ltime">21:40 UTC</div></div>
+      </a>
+      <a class="lrow" href="https://blueorigin.com" target="_blank">
+        <div class="lbar tbd"></div>
+        <div><div class="lname">New Glenn · NG-4</div><div class="lsub">Blue Origin · LC-36 · CCSFS</div><span class="lbadge tbd">TBD</span></div>
+        <div><div class="ldate" style="color:var(--ink-sub)">MAR 2026</div><div class="ltime">TBD</div></div>
+      </a>
+      <a class="lrow" href="https://roscosmos.ru" target="_blank">
+        <div class="lbar hold"></div>
+        <div><div class="lname">Soyuz-2.1b · Resurs-P5</div><div class="lsub">Roscosmos · Baikonur</div><span class="lbadge hold">HOLD</span></div>
+        <div><div class="ldate" style="color:var(--ink-muted)">MAR 2026</div><div class="ltime" style="color:var(--ink-muted)">TBD</div></div>
+      </a>
+      <button class="track-btn" onclick="openModal('track-launch')">+ Track a launch</button>
+    </div>
+    <div class="panel">
+      <div class="phead"><span class="ph">Solar Activity</span><span class="pi">03</span></div>
+      <div class="solar-body">
+        <div class="kp-row">
+          <span class="kpn" onclick="openModal('kp-history')">3.5</span>
+          <div class="kpi"><span class="kpu">Kp index</span><span class="kps">Moderate</span></div>
+        </div>
+        <div class="gauge-wrap" onclick="openModal('launch-conditions')">
+          <div class="gauge-top"><span class="gtitle">Launch Conditions</span><span class="gverdict">✓ Nominal</span></div>
+          <div class="gtrack"><div class="gcursor"></div></div>
+          <div class="gscale"><span>Optimal</span><span>Caution</span><span>Critical</span></div>
+        </div>
+        <div class="sgrid">
+          <div class="scell" onclick="openModal('solar-xray')"><div class="skey">X-Ray flux</div><div class="sval">C2.4</div></div>
+          <div class="scell" onclick="openModal('solar-wind')"><div class="skey">Solar wind</div><div class="sval">482 km/s</div></div>
+          <div class="scell" onclick="openModal('solar-density')"><div class="skey">Density</div><div class="sval">4.2 p/cm³</div></div>
+          <div class="scell" onclick="openModal('solar-bz')"><div class="skey">Bz field</div><div class="sval">−3.1 nT</div></div>
+        </div>
+        <div class="snote" onclick="openModal('solar-alert-detail')">Mild geomagnetic disturbance possible in next 24h — aurora visible above 60°N.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="phead"><span class="ph">Orbital Overview</span><span class="pi">04</span></div>
+      <div class="orb-body">
+        <div class="orb-counts">
+          <div class="orb-count" onclick="openModal('active-sats')"><div class="orb-num">9 <span>247</span></div><div class="orb-key">Active satellites</div></div>
+          <div class="orb-count" onclick="openModal('tracked-objects')"><div class="orb-num">27 <span>686</span></div><div class="orb-key">Tracked objects</div></div>
+          <div class="orb-count" onclick="openModal('debris')"><div class="orb-num">3 <span>218</span></div><div class="orb-key">Debris pieces</div></div>
+          <div class="orb-count" onclick="openModal('flagged')"><div class="orb-num">14</div><div class="orb-key">Flagged today</div></div>
+        </div>
+        <div class="orb-alert" onclick="openModal('today-activity')">
+          <div class="oat">Today's Activity</div>
+          <div class="oar"><span class="oar-l">Conjunctions flagged</span><span class="oar-v">14</span></div>
+          <div class="oar"><span class="oar-l">Active maneuvers</span><span class="oar-v">3</span></div>
+          <div class="oar"><span class="oar-l">Reentries tracked</span><span class="oar-v">2</span></div>
+        </div>
+        <div class="orb-bd">
+          <span class="ob-title">By constellation</span>
+          <div class="ob-row" onclick="openModal('starlink-detail')"><span class="ob-lbl">Starlink</span><div class="ob-track"><div class="ob-fill" style="width:72%"></div></div><span class="ob-ct">6 710</span></div>
+          <div class="ob-row" onclick="openModal('oneweb-detail')"><span class="ob-lbl">OneWeb</span><div class="ob-track"><div class="ob-fill" style="width:7%"></div></div><span class="ob-ct">648</span></div>
+          <div class="ob-row" onclick="openModal('gnss-detail')"><span class="ob-lbl">GPS / GNSS</span><div class="ob-track"><div class="ob-fill" style="width:4%"></div></div><span class="ob-ct">132</span></div>
+          <div class="ob-row" onclick="openModal('other-detail')"><span class="ob-lbl">Other</span><div class="ob-track"><div class="ob-fill" style="width:18%"></div></div><span class="ob-ct">1 757</span></div>
+        </div>
+        <p class="orb-note">Data sourced from Space-Track.org · Updated every 4h</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="maybeClose(event)">
+  <div class="modal">
+    <div class="modal-top">
+      <div class="modal-titles">
+        <div class="modal-eyebrow">Vigil · Expérimentation — Atelier ITER</div>
+        <div class="modal-title" id="mTitle">—</div>
+        <div class="modal-intro" id="mIntro"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Name</label><input type="text" id="fName" placeholder="Your name"/></div>
+        <div class="field"><label>Role</label>
+          <select id="fRole">
+            <option value="">Select…</option>
+            <option>New space startup</option>
+            <option>Satellite operator</option>
+            <option>Space agency</option>
+            <option>Defense / government</option>
+            <option>Journalist / researcher</option>
+            <option>Curious professional</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>What would you expect here?</label><textarea id="fMessage" placeholder="Describe what you were looking for…"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <div class="modal-foot-note">Vigil est une expérimentation d'Atelier ITER. Votre message ouvre votre client mail — je lis chacun d'eux.</div>
+      <a class="btn-send" id="sendBtn" href="#">Send →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CLOCK ──
+(function tick(){
+  const n=new Date(),p=v=>String(v).padStart(2,'0');
+  document.getElementById('clk').textContent=p(n.getUTCHours())+':'+p(n.getUTCMinutes())+':'+p(n.getUTCSeconds())+' UTC';
+  setTimeout(tick,1000);
+})();
+function toggleTheme(){document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'}
+function setLang(l){document.getElementById('bEN').classList.toggle('on',l==='en');document.getElementById('bFR').classList.toggle('on',l==='fr')}
+
+// ── FILTERS ──
+const F={iss:true,starlink:true,oneweb:true,geo:false,sites:false};
+document.querySelectorAll('.fb[data-f]').forEach(btn=>{
+  btn.addEventListener('click',e=>{e.stopPropagation();const k=btn.dataset.f;F[k]=!F[k];btn.classList.toggle('on',F[k])});
+});
+
+// ── ISS CARD PIN ──
+let pinned=false;
+function togglePin(){
+  pinned=!pinned;
+  document.getElementById('issCard').classList.toggle('pinned',pinned);
+  const btn=document.getElementById('pinBtn');
+  btn.classList.toggle('on',pinned);
+  btn.title=pinned?'Unpin card':'Pin card';
+}
+
+// ══════════════════════════════════════════
+// TIMELINE v11
+// ══════════════════════════════════════════
+const ZOOM_LEVELS = [6, 12, 24, 48, 72, 96];
+const HIGHLIGHT_HALF = 110;
+const TOTAL_H = 240;
+let zoomIdx  = 2; // default 24h
+let tlOffset = 0;
+const tlNow  = new Date();
+
+const TL_EVENTS = [
+  {h:-8.5,  label:'Falcon 9',    sub:'Starlink 6-73 · LC-39A',  type:'launch',      key:'tl-launch-f9'},
+  {h:-3.2,  label:'Conjunction', sub:'ISS · Cosmos fragment',    type:'conjunction', key:'tl-conj1'},
+  {h: 1.75, label:'Falcon 9',    sub:'Starlink 6-74',            type:'launch',      key:'tl-launch-f9b'},
+  {h: 5.4,  label:'Reentry',     sub:'CZ-3B R/B · Pacific',      type:'reentry',     key:'tl-reentry1'},
+  {h: 9.1,  label:'Ariane 6',    sub:'SES-26 · Kourou',          type:'launch',      key:'tl-launch-a6'},
+  {h:14.3,  label:'Conjunction', sub:'OneWeb-0418 · debris',     type:'conjunction', key:'tl-conj2'},
+];
+const EVT_COLOR = {launch:'var(--accent)', conjunction:'#F59E0B', reentry:'#EF4444'};
+
+function fmtH(d){const p=v=>String(v).padStart(2,'0');return p(d.getUTCHours())+':'+p(d.getUTCMinutes())+'z'}
+function fmtDelta(h){const a=Math.abs(h),hh=Math.floor(a),mm=Math.round((a-hh)*60);return (h>=0?'+':'−')+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')}
+function pxPerH(){const vp=document.getElementById('tlViewport');return (vp.clientWidth||800)/ZOOM_LEVELS[zoomIdx]}
+function nowPxInInner(){return TOTAL_H/2*pxPerH()}
+function viewportXToHours(vpX){
+  const vp=document.getElementById('tlViewport');const vpW=vp.clientWidth||800;
+  const tx=vpW/2-nowPxInInner()+tlOffset*pxPerH();
+  return (vpX-tx-nowPxInInner())/pxPerH();
+}
+
+function buildTimeline(){
+  const vp=document.getElementById('tlViewport');
+  const inner=document.getElementById('tlInner');
+  const vpW=vp.clientWidth||800;
+  const vpH=vp.clientHeight||66;
+  const pph=pxPerH();
+  const totalW=TOTAL_H*pph;
+  const nowPx=nowPxInInner();
+  const tx=vpW/2-nowPx+tlOffset*pph;
+
+  inner.style.width=totalW+'px';
+  inner.style.height=vpH+'px';
+  inner.style.transform=`translateX(${tx}px)`;
+
+  inner.querySelectorAll('.tl-tick,.tl-tick-lbl,.tl-now,.tl-evt').forEach(e=>e.remove());
+
+  // Ticks
+  const visH=ZOOM_LEVELS[zoomIdx];
+  const tickInt=visH<=6?1:visH<=24?6:visH<=48?12:24;
+  const lblEvery=visH<=12?1:2;
+  for(let dh=-TOTAL_H/2;dh<=TOTAL_H/2;dh+=tickInt){
+    const px=nowPx+dh*pph;if(px<0||px>totalW)continue;
+    const isMajor=dh%(tickInt*lblEvery)===0;
+    const tick=document.createElement('div');
+    tick.className='tl-tick';tick.style.left=px+'px';tick.style.height=(isMajor?12:6)+'px';
+    inner.appendChild(tick);
+    if(isMajor){
+      const lbl=document.createElement('div');
+      lbl.className='tl-tick-lbl';lbl.style.left=px+'px';
+      lbl.textContent=fmtH(new Date(tlNow.getTime()+dh*3600000));
+      inner.appendChild(lbl);
+    }
+  }
+
+  // NOW
+  const nowEl=document.createElement('div');
+  nowEl.className='tl-now';nowEl.style.left=nowPx+'px';
+  inner.appendChild(nowEl);
+
+  // Events — all dots at same height on rail
+  TL_EVENTS.forEach(ev=>{
+    const px=nowPx+ev.h*pph;if(px<0||px>totalW)return;
+    const color=EVT_COLOR[ev.type]||'var(--ink-muted)';
+    const wrap=document.createElement('div');
+    wrap.className='tl-evt';wrap.style.left=(px-16)+'px';wrap.style.color=color;
+    wrap.onclick=e=>{e.stopPropagation();openModal(ev.key)};
+
+    const dot=document.createElement('div');dot.className='tl-evt-dot';wrap.appendChild(dot);
+
+    const lbl=document.createElement('div');lbl.className='tl-evt-lbl';lbl.textContent=ev.label;wrap.appendChild(lbl);
+
+    const tip=document.createElement('div');tip.className='tl-evt-tip';
+    tip.innerHTML=`<div class="tl-evt-tip-name">${ev.label}</div><div class="tl-evt-tip-sub">${ev.sub}</div>`;
+    wrap.appendChild(tip);
+
+    inner.appendChild(wrap);
+  });
+
+  // Range label
+  const halfH=ZOOM_LEVELS[zoomIdx]/2;
+  const rS=new Date(tlNow.getTime()+(tlOffset-halfH)*3600000);
+  const rE=new Date(tlNow.getTime()+(tlOffset+halfH)*3600000);
+  document.getElementById('tlRange').textContent=fmtH(rS)+' — '+fmtH(rE);
+
+  // Zoom label
+  const zh=ZOOM_LEVELS[zoomIdx];
+  document.getElementById('tlZoomLbl').textContent=zh<24?zh+'h':(zh/24)+'d';
+}
+
+// Hover zone
+const hoverZone=document.getElementById('tlHoverZone');
+const cursorLine=document.getElementById('tlCursorLine');
+const cursorLbl=document.getElementById('tlCursorLbl');
+
+function updateHoverZone(vpX){
+  const vp=document.getElementById('tlViewport');const vpW=vp.clientWidth||800;
+  if(vpX<0){
+    hoverZone.classList.remove('visible');cursorLine.classList.remove('visible');cursorLbl.classList.remove('visible');return;
+  }
+  const l=Math.max(0,vpX-HIGHLIGHT_HALF),r=Math.min(vpW,vpX+HIGHLIGHT_HALF);
+  hoverZone.style.left=l+'px';hoverZone.style.width=(r-l)+'px';hoverZone.classList.add('visible');
+  cursorLine.style.left=vpX+'px';cursorLine.classList.add('visible');
+  const h=viewportXToHours(vpX);
+  const t=new Date(tlNow.getTime()+h*3600000);
+  cursorLbl.textContent=fmtH(t)+' UTC ('+fmtDelta(h)+')';
+  cursorLbl.style.left=vpX+'px';cursorLbl.classList.add('visible');
+}
+
+// Interactions
+(function(){
+  const vp=document.getElementById('tlViewport');
+  let isDragging=false,startX=0,startOff=0;
+
+  vp.addEventListener('mousemove',e=>{
+    const rect=vp.getBoundingClientRect();
+    updateHoverZone(e.clientX-rect.left);
+  });
+  vp.addEventListener('mouseleave',()=>updateHoverZone(-1));
+
+  vp.addEventListener('mousedown',e=>{
+    if(e.target.closest('.tl-evt,.tl-zoom-btn,.tl-nav-btn,.tl-reset-btn'))return;
+    isDragging=true;startX=e.clientX;startOff=tlOffset;
+    vp.classList.add('panning');e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!isDragging)return;
+    tlOffset=startOff-(e.clientX-startX)/pxPerH();buildTimeline();
+    const rect=vp.getBoundingClientRect();updateHoverZone(e.clientX-rect.left);
+  });
+  document.addEventListener('mouseup',e=>{
+    if(!isDragging)return;isDragging=false;vp.classList.remove('panning');
+    const rect=vp.getBoundingClientRect();updateHoverZone(e.clientX-rect.left);
+  });
+
+  vp.addEventListener('dblclick',e=>{
+    if(e.target.closest('.tl-evt'))return;tlOffset=0;buildTimeline();
+  });
+
+  vp.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=vp.getBoundingClientRect();const vpX=e.clientX-rect.left;
+    const hAtCursor=viewportXToHours(vpX);
+    const delta=e.deltaY>0?1:-1;
+    zoomIdx=Math.max(0,Math.min(ZOOM_LEVELS.length-1,zoomIdx+delta));
+    tlOffset=hAtCursor-(vpX-(vp.clientWidth||800)/2)/pxPerH();
+    buildTimeline();updateHoverZone(vpX);
+  },{passive:false});
+
+  // Touch
+  let tStartX=0,tStartOff=0;
+  vp.addEventListener('touchstart',e=>{tStartX=e.touches[0].clientX;tStartOff=tlOffset},{passive:true});
+  vp.addEventListener('touchmove',e=>{tlOffset=tStartOff-(e.touches[0].clientX-tStartX)/pxPerH();buildTimeline()},{passive:true});
+})();
+
+document.getElementById('tlZoomIn').addEventListener('click',e=>{e.stopPropagation();zoomIdx=Math.max(0,zoomIdx-1);buildTimeline()});
+document.getElementById('tlZoomOut').addEventListener('click',e=>{e.stopPropagation();zoomIdx=Math.min(ZOOM_LEVELS.length-1,zoomIdx+1);buildTimeline()});
+document.getElementById('tlBack').onclick=e=>{e.stopPropagation();tlOffset-=ZOOM_LEVELS[zoomIdx]/2;buildTimeline()};
+document.getElementById('tlFwd').onclick=e=>{e.stopPropagation();tlOffset+=ZOOM_LEVELS[zoomIdx]/2;buildTimeline()};
+document.getElementById('tlReset').onclick=e=>{e.stopPropagation();tlOffset=0;buildTimeline()};
+
+window.addEventListener('resize',buildTimeline);
+setTimeout(buildTimeline,60);
+
+// ── MODAL ──
+const MC = {
+  'tl-launch-f9' :{title:'Falcon 9 · Starlink 6-73',    intro:'Lancement passé il y a ~8h30. Overlay de trajectoire sur la carte, détail du payload, altitude de dépose des satellites.'},
+  'tl-launch-f9b':{title:'Falcon 9 · Starlink 6-74',    intro:'Lancement dans ~1h45. Overlay trajectoire en temps réel, T-minus, fenêtre de lancement, lien vers le live SpaceX.'},
+  'tl-conj1'     :{title:'Conjunction · ISS / Cosmos fragment', intro:'Rapprochement entre l\'ISS et un fragment de Cosmos 2251. Pc, distance minimale d\'approche, altitude, timestamp exact.'},
+  'tl-conj2'     :{title:'Conjunction · OneWeb-0418 / debris',  intro:'Rapprochement signalé entre un satellite OneWeb et un débris non manœuvrable. Pc 1:2400.'},
+  'tl-reentry1'  :{title:'Reentry · CZ-3B R/B',         intro:'Rentrée atmosphérique d\'un étage supérieur Long March 3B. Fenêtre prédite ±3h, zone d\'impact Pacifique.'},
+  'tl-launch-a6' :{title:'Ariane 6 · SES-26',           intro:'Lancement dans ~9h. Détail du payload SES-26 (GEO, télécom), fenêtre de lancement.'},
+  'timeline'     :{title:'24h Event Timeline',           intro:'Sélection d\'intervalle temporel. Que souhaitez-vous voir sur cet intervalle ?'},
+  'track-launch' :{title:'Track a Launch',               intro:'Suivre un lancement spécifique — alertes avant lancement, overlay carte en temps réel.'},
+  'iss-events'   :{title:'ISS — Related Events',         intro:'Événements liés à l\'ISS dans les 72h : passages, amarrages, conjunctions.'},
+  'starlink-detail':{title:'Starlink Constellation',     intro:'Par shell orbital, ratio actifs/inactifs, density map à 550 km.'},
+  'oneweb-detail':{title:'OneWeb Constellation',         intro:'Vue par plan orbital, zones de couverture, état de la flotte.'},
+  'kp-history'   :{title:'Kp Index — Historique',        intro:'Courbe 72h, prévision à 48h, corrélation anomalies satellites.'},
+  'launch-conditions':{title:'Launch Conditions',        intro:'Décomposition : vent solaire, Bz, densité, Kp. Fenêtres optimales.'},
+  'solar-xray'   :{title:'X-Ray Flux',                   intro:'Classification (A/B/C/M/X), impact sur les communications HF et GPS.'},
+  'solar-wind'   :{title:'Solar Wind Speed',             intro:'Tendance 24h, impact sur le freinage atmosphérique des satellites LEO.'},
+  'solar-density':{title:'Particle Density',             intro:'Densité protonique temps réel, impact sur les payloads sensibles aux radiations.'},
+  'solar-bz'     :{title:'Bz Field',                     intro:'Composante sud du champ interplanétaire. Seuil de tempête géomagnétique.'},
+  'solar-alert-detail':{title:'Perturbation géomagnétique', intro:'Origine, durée prévue, zones affectées, impact opérations satellites.'},
+  'active-sats'  :{title:'Active Satellites',            intro:'Répartition par pays, opérateur, altitude, usage.'},
+  'tracked-objects':{title:'Tracked Objects',            intro:'Payloads actifs, étages de fusée, débris catalogués.'},
+  'debris'       :{title:'Debris Catalog',               intro:'Carte de densité par altitude, origines des fragmentations.'},
+  'flagged'      :{title:'Flagged Events — Today',       intro:'Conjunctions Pc > seuil, manœuvres d\'évitement, objets en rentrée.'},
+  'today-activity':{title:'Today\'s Orbital Activity',   intro:'Feed des événements notables : conjunctions, manœuvres, anomalies.'},
+  'gnss-detail'  :{title:'GPS / GNSS',                   intro:'État des constellations de navigation : GPS, Galileo, GLONASS, BeiDou.'},
+  'other-detail' :{title:'Other Satellites',             intro:'Gouvernementaux, scientifiques, legacy, CubeSats.'},
+};
+
+let currentKey = '';
+function openModal(key, e){
+  if(e) e.stopPropagation();
+  const c = MC[key] || {title:key, intro:'Cette fonctionnalité n\'est pas encore définie.'};
+  currentKey = key;
+  document.getElementById('mTitle').textContent = c.title;
+  document.getElementById('mIntro').innerHTML =
+    '<em>Vigil est une expérimentation développée par Atelier ITER.</em> Si vous pensez que cette fonctionnalité a un sens, n\'hésitez pas à nous en faire part — et dites-nous ce que vous attendiez ici.<br><br>' + c.intro;
+  document.getElementById('modalOverlay').classList.add('open');
+  updateMailto();
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open') }
+function maybeClose(e){ if(e.target === document.getElementById('modalOverlay')) closeModal() }
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal() });
+function updateMailto(){
+  const name = document.getElementById('fName').value.trim() || '(not provided)';
+  const role = document.getElementById('fRole').value || '(not provided)';
+  const msg  = document.getElementById('fMessage').value.trim() || '(not provided)';
+  const c    = MC[currentKey];
+  const subject = encodeURIComponent('Vigil — ' + (c ? c.title : currentKey));
+  const body    = encodeURIComponent('From: '+name+'\nRole: '+role+'\nFeature: '+currentKey+'\n\nWhat I expected here:\n'+msg+'\n\n---\nSent from vigil.atelieriter.com');
+  document.getElementById('sendBtn').href = 'mailto:contact@atelieriter.com?subject=' + subject + '&body=' + body;
+}
+['fName','fRole','fMessage'].forEach(id => document.getElementById(id).addEventListener('input', updateMailto));
+
+// ── CANVAS MAP ──
+const canvas = document.getElementById('map');
+const ctx    = canvas.getContext('2d');
+let W = 600, H = 400;
+function sizeCanvas(){
+  const p = canvas.parentElement;
+  const nw = p.clientWidth, nh = p.clientHeight;
+  if(nw < 2 || nh < 2) return;
+  if(canvas.width === nw && canvas.height === nh) return;
+  W = canvas.width = nw; H = canvas.height = nh;
+}
+function ll2xy(lon,lat){ return [(lon+180)/360*W, (90-lat)/180*H] }
+function xy2ll(x,y)    { return [x/W*360-180, 90-y/H*180] }
+let iLat = 48.5, iLon = 2.3;
+function mkSats(n,lm){const a=[];for(let i=0;i<n;i++){const t=i/n;a.push({lon0:t*360-180,lat:Math.sin(t*Math.PI*7)*lm,sp:.003+t*.002})}return a}
+const SL=mkSats(60,53),OW=mkSats(28,87),GEO=mkSats(18,.3);
+const SITES=[[-80.6,28.5],[-52.8,5.2],[63.3,45.6],[100.9,27.5],[-120.6,34.6]];
+const LAND=[
+  [[-125,49],[-95,49],[-80,45],[-65,44],[-60,47],[-60,25],[-80,10],[-90,16],[-105,20],[-115,30],[-125,40]],
+  [[-80,12],[-50,5],[-35,-5],[-35,-25],[-55,-35],[-68,-55],[-75,-50],[-80,-35],[-70,-10],[-75,5]],
+  [[-10,36],[15,37],[30,36],[40,42],[38,52],[18,58],[0,51],[-5,44],[-10,38]],
+  [[-18,16],[52,16],[52,-30],[18,-35],[0,5],[-18,16]],
+  [[26,36],[55,22],[105,10],[120,20],[145,42],[140,55],[80,60],[40,38],[26,36]],
+  [[114,-22],[154,-22],[154,-38],[136,-38],[114,-28]]
+];
+let frame=0,mx=-1,my=-1,onC=false;
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function draw(){
+  sizeCanvas();if(W<2||H<2)return;
+  const dark=document.documentElement.dataset.theme!=='light';
+  const bg=css('--bg'),border=css('--border'),accent=css('--accent'),surf2=css('--surface2');
+  ctx.clearRect(0,0,W,H);ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=border;ctx.lineWidth=.35;ctx.globalAlpha=.45;
+  for(let lo=-180;lo<=180;lo+=30){const[x]=ll2xy(lo,0);ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let la=-60;la<=60;la+=30){const[,y]=ll2xy(0,la);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  ctx.globalAlpha=1;
+  const[,ey]=ll2xy(0,0);ctx.strokeStyle=border;ctx.lineWidth=.7;ctx.globalAlpha=.7;ctx.beginPath();ctx.moveTo(0,ey);ctx.lineTo(W,ey);ctx.stroke();ctx.globalAlpha=1;
+  ctx.fillStyle=dark?surf2:'#D0C8B8';ctx.strokeStyle=border;ctx.lineWidth=.5;ctx.globalAlpha=.85;
+  LAND.forEach(pts=>{ctx.beginPath();pts.forEach(([lo,la],i)=>{const[x,y]=ll2xy(lo,la);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath();ctx.fill();ctx.stroke()});
+  ctx.globalAlpha=1;
+  if(F.geo){ctx.setLineDash([3,6]);ctx.strokeStyle=accent;ctx.lineWidth=.5;ctx.globalAlpha=.18;ctx.beginPath();ctx.moveTo(0,ey);ctx.lineTo(W,ey);ctx.stroke();ctx.setLineDash([]);GEO.forEach(s=>{const lo=((s.lon0+frame*s.sp*.1)%360+360)%360-180;const[x,y]=ll2xy(lo,s.lat);ctx.fillStyle=accent;ctx.globalAlpha=.18;ctx.beginPath();ctx.arc(x,y,.8,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1}
+  if(F.oneweb){OW.forEach(s=>{const lo=((s.lon0+frame*s.sp)%360+360)%360-180;const[x1,y1]=ll2xy(lo-7,s.lat-1.75),[x2,y2]=ll2xy(lo+7,s.lat+1.75),[xc,yc]=ll2xy(lo,s.lat);ctx.strokeStyle=accent;ctx.lineWidth=.6;ctx.globalAlpha=.2;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.fillStyle=accent;ctx.globalAlpha=.32;ctx.beginPath();ctx.arc(xc,yc,.9,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1}
+  if(F.starlink){SL.forEach(s=>{const lo=((s.lon0+frame*s.sp)%360+360)%360-180;const[x1,y1]=ll2xy(lo-5,s.lat-1),[x2,y2]=ll2xy(lo+5,s.lat+1),[xc,yc]=ll2xy(lo,s.lat);ctx.strokeStyle=accent;ctx.lineWidth=.5;ctx.globalAlpha=.28;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.fillStyle=accent;ctx.globalAlpha=.42;ctx.beginPath();ctx.arc(xc,yc,.8,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1}
+  if(F.sites){SITES.forEach(([lo,la])=>{const[x,y]=ll2xy(lo,la);ctx.strokeStyle=accent;ctx.lineWidth=.8;ctx.globalAlpha=.5;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.stroke();ctx.fillStyle=accent;ctx.globalAlpha=.65;ctx.beginPath();ctx.arc(x,y,1.5,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1}
+  if(F.iss){
+    const[ix,iy]=ll2xy(iLon,iLat);
+    ctx.strokeStyle=accent;ctx.lineWidth=.5;ctx.globalAlpha=.1;ctx.setLineDash([4,8]);
+    ctx.beginPath();for(let lo=-180;lo<=181;lo+=2){const la=51.6*Math.sin((lo+180)/360*Math.PI*2+frame*.008);const[x,y]=ll2xy(lo,la);lo===-180?ctx.moveTo(x,y):ctx.lineTo(x,y)}
+    ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    const pr=9+4*Math.sin(frame*.07);ctx.strokeStyle=accent;ctx.lineWidth=.7;ctx.globalAlpha=.13+.1*Math.sin(frame*.07);ctx.beginPath();ctx.arc(ix,iy,pr,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
+    ctx.beginPath();for(let i=0;i<6;i++){const a=Math.PI/3*i-Math.PI/6;ctx.lineTo(ix+5*Math.cos(a),iy+5*Math.sin(a))}
+    ctx.closePath();ctx.fillStyle=accent;ctx.globalAlpha=.12;ctx.fill();ctx.strokeStyle=accent;ctx.lineWidth=1.2;ctx.globalAlpha=1;ctx.stroke();
+    [[ix,iy-5],[ix-4.33,iy+2.5],[ix+4.33,iy+2.5]].forEach(([px,py])=>{ctx.strokeStyle=accent;ctx.lineWidth=.7;ctx.globalAlpha=.6;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(ix,iy);ctx.stroke()});
+    ctx.globalAlpha=1;ctx.font="9px 'DM Mono',monospace";ctx.fillStyle=accent;ctx.globalAlpha=.85;ctx.fillText('ISS',ix+8,iy+3);ctx.globalAlpha=1;
+  }
+  if(onC&&mx>=0){ctx.strokeStyle=accent;ctx.lineWidth=.6;ctx.globalAlpha=.28;ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(mx,0);ctx.lineTo(mx,H);ctx.stroke();ctx.beginPath();ctx.moveTo(0,my);ctx.lineTo(W,my);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1}
+  frame++;
+}
+const chLabel = document.getElementById('chLabel');
+canvas.addEventListener('mousemove', e => {
+  onC=true;const r=canvas.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;
+  const[lon,lat]=xy2ll(mx,my);
+  chLabel.textContent=Math.abs(lat).toFixed(2)+(lat>=0?'°N':'°S')+' · '+Math.abs(lon).toFixed(2)+(lon>=0?'°E':'°W');
+  let lx=mx+12,ly=my-18;if(lx+130>W)lx=mx-130;if(ly<4)ly=my+14;
+  chLabel.style.left=lx+'px';chLabel.style.top=ly+'px';chLabel.style.opacity='1';
+  if(!pinned){const[ix,iy]=ll2xy(iLon,iLat);document.getElementById('issCard').classList.toggle('show',Math.hypot(mx-ix,my-iy)<18)}
+});
+canvas.addEventListener('mouseleave',()=>{onC=false;mx=-1;my=-1;chLabel.style.opacity='0';if(!pinned)document.getElementById('issCard').classList.remove('show')});
+canvas.addEventListener('click', e => {
+  const r=canvas.getBoundingClientRect();
+  const cx=e.clientX-r.left,cy=e.clientY-r.top;
+  const[ix,iy]=ll2xy(iLon,iLat);
+  if(Math.hypot(cx-ix,cy-iy)<18) togglePin();
+});
+function moveISS(){
+  iLat+=(Math.random()-.47)*.1;iLon+=.065;if(iLon>180)iLon=-180;iLat=Math.max(-54,Math.min(54,iLat));
+  const la=Math.abs(iLat).toFixed(3)+(iLat>=0?'°N':'°S');
+  const lo=Math.abs(iLon).toFixed(3)+(iLon>=0?'°E':'°W');
+  const ec=document.getElementById('cLat');if(ec)ec.textContent=la;
+  const eo=document.getElementById('cLon');if(eo)eo.textContent=lo;
+}
+setInterval(moveISS, 3200); moveISS();
+window.addEventListener('resize', ()=>{ sizeCanvas(); buildTimeline() });
+(function loop(){ draw(); requestAnimationFrame(loop) })();
+</script>
+</body>
+</html>
